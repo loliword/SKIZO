@@ -5185,6 +5185,7 @@ void update_cpu_load_nohz(void)
 		 */
 		__update_cpu_load(this_rq, 0, pending_updates);
 	}
+	update_rq_clock(this_rq);
 	raw_spin_unlock(&this_rq->lock);
 }
 #endif /* CONFIG_NO_HZ */
