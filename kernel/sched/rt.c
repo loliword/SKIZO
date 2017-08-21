@@ -1480,6 +1480,17 @@ select_task_rq_rt(struct task_struct *p, int cpu, int sd_flag, int flags,
 
 	may_not_preempt = task_may_not_preempt(curr, cpu);
 	target = find_lowest_rq(p, sync);
+
+	/*
+	 * Check once for losing a race with the other core's irq handler.
+	 * This does not happen frequently, but it can avoid delaying
+	 * the execution of the RT task in those cases.
+	 */
+	if (target != -1) {
+		tgt_task = READ_ONCE(cpu_rq(target)->curr);
+		if (task_may_not_preempt(tgt_task, target))
+			target = find_lowest_rq(p, sync);
+	}
 	/*
 	 * Possible race. Don't bother moving it if the
 	 * destination CPU is not running a lower priority task.
@@ -1487,6 +1498,7 @@ select_task_rq_rt(struct task_struct *p, int cpu, int sd_flag, int flags,
 	if (target != -1 &&
 	    (may_not_preempt || p->prio < cpu_rq(target)->rt.highest_prio.curr))
 		cpu = target;
+	*per_cpu_ptr(&incoming_rt_task, cpu) = true;
 	rcu_read_unlock();
 out:
 	return cpu;
